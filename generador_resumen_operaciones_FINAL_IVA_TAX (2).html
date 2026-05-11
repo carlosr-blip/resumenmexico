@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generador | Resumen de Operaciones</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root{--navy:#163B55;--teal:#1F6F78;--muted:#64748B;--line:#D8E2E7;--soft:#F4F8FA;--white:#FFFFFF;--danger:#B42318;--ok:#146C43}
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#F7FAFC 0%,#EEF5F7 100%);font-family:Inter,Segoe UI,Arial,sans-serif;color:#0F172A}.page{max-width:1180px;margin:0 auto;padding:34px 22px 52px}.hero{display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch;margin-bottom:22px}.card{background:var(--white);border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 45px rgba(22,59,85,.08)}.intro{padding:32px}.upload{padding:26px}.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:800;margin-bottom:12px}h1{font-size:34px;line-height:1.05;margin:0 0 14px;color:var(--navy);letter-spacing:-.03em}.lead{font-size:16px;line-height:1.55;color:#334155;margin:0;max-width:720px}.rule{margin-top:20px;padding:13px 15px;border-radius:14px;background:#EAF2F5;color:#163B55;font-size:13px;line-height:1.45;font-weight:700}.field{margin-bottom:16px}label{display:block;font-size:13px;font-weight:800;color:var(--navy);margin-bottom:8px}input[type=file],input[type=text]{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;font-size:14px;color:#0F172A}input[type=file]{padding:14px;background:var(--soft)}.hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.4}.btn{appearance:none;border:0;border-radius:14px;padding:13px 18px;font-weight:800;font-size:14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;justify-content:center;transition:.15s ease;background:var(--navy);color:white}.btn:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(22,59,85,.18)}.btn.secondary{background:var(--teal)}.btn.light{background:#EAF2F5;color:var(--navy);box-shadow:none}.btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}.msg{padding:14px 16px;border-radius:16px;margin-bottom:20px;font-weight:700}.error{border:1px solid #FDA29B;background:#FFF1F0;color:var(--danger)}.ok{border:1px solid #A6F4C5;background:#ECFDF3;color:var(--ok)}.hidden{display:none!important}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}.kpi{padding:18px;border-radius:18px;background:#fff;border:1px solid var(--line)}.kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:6px}.kpi .value{font-size:22px;font-weight:900;color:var(--navy);word-break:break-word}.results{padding:22px;overflow:hidden}.results-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}h2{margin:0;color:var(--navy);font-size:22px;letter-spacing:-.02em}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px}table{width:100%;border-collapse:collapse;min-width:980px;background:#fff}th{background:var(--teal);color:#fff;font-size:12px;text-align:left;padding:12px 13px;white-space:nowrap}td{border-top:1px solid var(--line);padding:11px 13px;font-size:13px;color:#1E293B;vertical-align:middle}td.num{text-align:right;font-variant-numeric:tabular-nums}.file{font-weight:800;color:var(--navy)}.pill{display:inline-flex;border-radius:999px;padding:4px 9px;background:#EAF2F5;color:var(--navy);font-size:12px;font-weight:800}.bar{height:8px;background:#D8E2E7;border-radius:999px;overflow:hidden;margin-top:12px}.bar span{display:block;height:100%;width:0;background:var(--teal);transition:.2s ease}@media(max-width:960px){.hero{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}h1{font-size:28px}}@media(max-width:640px){.kpis{grid-template-columns:1fr}.results-head{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="card intro">
+        <div class="eyebrow">KEO · Operaciones</div>
+        <h1>Generador de Resumen de Operaciones</h1>
+        <p class="lead">Carga la fuente en español o inglés y genera automáticamente un archivo por cliente, fondeador y moneda, con el layout del reporte de referencia: saldo disponible arriba y operaciones con deuda en la hoja <strong>Estatus</strong>.</p>
+        <div class="rule">Regla aplicada: se genera reporte solo para filas con campos operativos reales y deuda: <strong>TOTAL &gt; 0</strong> en SALDOS o <strong>TOTAL OUTSTANDING &gt; 0</strong> en BALANCES. El reporte detecta el bloque completo de deuda entre <strong>SALDO INSOLUTO / PRINCIPAL</strong> y <strong>TOTAL / TOTAL OUTSTANDING</strong>, pero en cada archivo solo muestra las columnas con saldo real: principal, fee, impuestos e intereses se ocultan cuando vienen en cero. También conserva <strong>NÚMERO DE REFERENCIA</strong> / <strong>REFERENCE NUMBER</strong>.</div>
+      </div>
+
+      <form class="card upload" id="uploadForm">
+        <div class="field">
+          <label for="fileInput">Archivo fuente / Tabla de Amortización</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xlsm" required>
+          <div class="hint">Acepta fuente en español: <strong>SALDOS</strong> + <strong>LÍNEAS DE CRÉDITO</strong>, o fuente en inglés: <strong>BALANCES</strong> + <strong>LINES</strong>.</div>
+        </div>
+        <div class="field">
+          <label for="statusInput">Filtro opcional para saldo disponible</label>
+          <input id="statusInput" type="text" placeholder="Vacío = todos los status">
+          <div class="hint">Déjalo vacío para sumar todas las líneas. Si necesitas limitarlo, escribe status separados por coma, por ejemplo: ACTIVE, DEFAULT.</div>
+        </div>
+        <button class="btn" id="processBtn" type="submit">Generar reportes</button>
+        <div class="bar hidden" id="progressBar"><span></span></div>
+      </form>
+    </section>
+
+    <div id="message" class="msg hidden"></div>
+
+    <section class="kpis hidden" id="kpis">
+      <div class="kpi"><div class="label">Reportes generados</div><div class="value" id="kpiReports">0</div></div>
+      <div class="kpi"><div class="label">Operaciones con deuda</div><div class="value" id="kpiOps">0</div></div>
+      <div class="kpi"><div class="label">Total deuda</div><div class="value" id="kpiDebt">$0.00</div></div>
+      <div class="kpi"><div class="label">Disponible reportado</div><div class="value" id="kpiAvailable">$0.00</div></div>
+    </section>
+
+    <section class="card results hidden" id="resultsSection">
+      <div class="results-head">
+        <h2>Archivos listos para descargar</h2>
+        <button class="btn secondary" id="downloadZip" type="button">Descargar ZIP completo</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Archivo</th><th>Cliente</th><th>Fondeador</th><th>Moneda</th><th>Operaciones</th><th>Saldo disponible</th><th>Total deuda</th><th>Descarga</th></tr></thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script>
+(function(){
+  const REFERENCE_ALIASES = ["NÚMERO DE REFERENCIA","NUMERO DE REFERENCIA","REFERENCE NUMBER","REFERENCE NO","REFERENCE #","REF NUMBER","REF. NUMBER","REFERENCIA","REFERENCE"];
+  let generated = [];
+
+  const $ = id => document.getElementById(id);
+  const normalizeText = v => String(v ?? "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").toUpperCase();
+  const keyText = v => normalizeText(v).replace(/[^A-Z0-9]+/g," ").replace(/\s+/g," ").trim();
+  const normalizeFondeador = v => {
+    const t = String(v ?? "").trim();
+    const l = t.toLowerCase();
+    return (l.includes("hayfin") || l.includes("keo")) ? "KEO" : (t || "SIN FONDEADOR");
+  };
+  const numberOrZero = v => {
+    if (v === null || v === undefined || v === "" || v === "-") return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    let t = String(v).trim().replace(/\$/g,"").replace(/,/g,"");
+    if (t.startsWith("(") && t.endsWith(")")) t = "-" + t.slice(1,-1);
+    const n = Number(t);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const hasValue = v => v !== null && v !== undefined && String(v).trim() !== "";
+  const hasDebtAmount = v => Math.abs(Number(v || 0)) >= 0.005;
+  const rowHasAnyData = (row, indexes) => indexes.some(i => i !== null && i !== undefined && hasValue(row[i]));
+  const rowHasDebtData = (row, idxCliente, idxTotal, extraIndexes) => {
+    return hasValue(row[idxCliente]) && hasValue(row[idxTotal]) && numberOrZero(row[idxTotal]) > 0 && rowHasAnyData(row, extraIndexes);
+  };
+  const rowHasLineData = (row, idxEmpresa, idxMonto, extraIndexes) => {
+    return hasValue(row[idxEmpresa]) && hasValue(row[idxMonto]) && rowHasAnyData(row, extraIndexes);
+  };
+  const safeFilename = v => String(v || "SIN_NOMBRE").replace(/[\\/:*?"<>|]+/g,"-").replace(/\s+/g," ").trim().slice(0,155).replace(/[ .-]+$/g,"") || "SIN_NOMBRE";
+  const showMessage = (type, text) => { const el = $("message"); el.className = "msg " + type; el.textContent = text; el.classList.remove("hidden"); };
+  const clearMessage = () => $("message").classList.add("hidden");
+  const setProgress = pct => { const b = $("progressBar"); b.classList.remove("hidden"); b.querySelector("span").style.width = Math.max(0, Math.min(100,pct)) + "%"; };
+  const currencyFormatter = (currency) => {
+    const c = String(currency || "MXN").toUpperCase();
+    try { return new Intl.NumberFormat("es-MX", {style:"currency", currency:c, minimumFractionDigits:2}); }
+    catch { return new Intl.NumberFormat("es-MX", {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  };
+  const money = (n, currency) => currencyFormatter(currency).format(Number(n || 0));
+  const totalsByCurrencyText = (items, field) => {
+    const by = new Map();
+    items.forEach(it => by.set(it.moneda, (by.get(it.moneda) || 0) + Number(it[field] || 0)));
+    return Array.from(by.entries()).sort().map(([c,v]) => money(v,c)).join(" / ") || money(0,"MXN");
+  };
+
+  function sheetByName(workbook, names){
+    const map = new Map(workbook.SheetNames.map(n => [normalizeText(n), n]));
+    for (const n of names){ const real = map.get(normalizeText(n)); if (real) return {name: real, sheet: workbook.Sheets[real]}; }
+    return null;
+  }
+  function requiredSheet(workbook, names){
+    const found = sheetByName(workbook, names);
+    if(!found) throw new Error("No encontré la hoja requerida: " + names.join(" / "));
+    return found;
+  }
+  function actualDataRange(ws){
+    const cells = Object.keys(ws).filter(k => k[0] !== "!" && /^[A-Z]+[0-9]+$/.test(k));
+    let minR = Infinity, minC = Infinity, maxR = -1, maxC = -1;
+    for(const addr of cells){
+      const c = ws[addr] || {};
+      const v = c.v !== undefined ? c.v : c.w;
+      if(v === undefined || v === null || v === "") continue;
+      const d = XLSX.utils.decode_cell(addr);
+      if(d.r < minR) minR = d.r;
+      if(d.c < minC) minC = d.c;
+      if(d.r > maxR) maxR = d.r;
+      if(d.c > maxC) maxC = d.c;
+    }
+    if(maxR < 0) return ws["!ref"] || "A1:A1";
+    return XLSX.utils.encode_range({s:{r:minR,c:minC}, e:{r:maxR,c:maxC}});
+  }
+  function rowsFromSheet(ws){
+    const range = actualDataRange(ws);
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:"", blankrows:false, range});
+    return rows;
+  }
+  function headerMap(headers){
+    const out = {};
+    headers.forEach((h,i)=>{ const k = normalizeText(h); if(k && out[k] === undefined) out[k] = i; });
+    return out;
+  }
+  function findIdx(map, names, required=true){
+    for (const n of names){ const k = normalizeText(n); if (map[k] !== undefined) return map[k]; }
+    if(required) throw new Error("No encontré la columna requerida: " + names.join(" / "));
+    return null;
+  }
+  function cell(row, idx, d=""){ return idx === null || idx === undefined ? d : (row[idx] ?? d); }
+  function previousHeader(headers, idx){
+    for(let i=idx-1;i>=0;i--){ const h = String(headers[i] ?? "").trim(); if(h) return h; }
+    return "";
+  }
+  function componentLabel(headers, idx, mode){
+    const raw = String(headers[idx] ?? "").trim() || `COL ${idx+1}`;
+    const n = normalizeText(raw);
+    if(mode === "ES" && n === "IVA"){
+      const prev = previousHeader(headers, idx);
+      return prev ? `IVA ${prev}` : "IVA";
+    }
+    if(mode === "EN" && n === "TAX"){
+      const prev = previousHeader(headers, idx);
+      return prev ? `TAX ${prev}` : "TAX";
+    }
+    return raw;
+  }
+  function componentPairKey(label, mode){
+    let n = normalizeText(label);
+    if(mode === "ES"){
+      if(n.startsWith("IVA ")) n = n.replace(/^IVA\s+/, "");
+      return n;
+    }
+    if(mode === "EN"){
+      if(n === "TAX") return "TAX";
+      if(n.startsWith("TAX ")) n = n.replace(/^TAX\s+/, "");
+      if(n.startsWith("ORDINARY INTEREST ")) n = n.replace(/^ORDINARY INTEREST\s+/, "");
+      return n;
+    }
+    return n;
+  }
+  function buildComponentSpecs(headers, idxComponentStart, idxTotal, mode){
+    if(idxComponentStart === null || idxComponentStart === undefined || idxTotal === null || idxTotal === undefined || idxTotal <= idxComponentStart){
+      throw new Error("No se pudo armar el bloque de componentes de deuda/intereses. Revisa columnas de principal/saldo y total.");
+    }
+    const specs = [];
+    const used = new Map();
+    for(let i=idxComponentStart; i<idxTotal; i++){
+      const header = String(headers[i] ?? "").trim();
+      if(!header) continue;
+      let label = componentLabel(headers, i, mode);
+      const k = normalizeText(label);
+      const count = used.get(k) || 0;
+      used.set(k, count + 1);
+      if(count > 0) label = `${label} ${count + 1}`;
+      specs.push({
+        index:i,
+        label,
+        pairKey: componentPairKey(label, mode),
+        isTaxLike: normalizeText(label).startsWith("IVA ") || normalizeText(label).startsWith("TAX ") || normalizeText(label) === "TAX"
+      });
+    }
+    if(!specs.length) throw new Error("No encontré columnas de componentes de deuda/interés para generar el reporte.");
+    return specs;
+  }
+
+  function detectSource(wb){
+    const es = sheetByName(wb, ["SALDOS"]);
+    if(es) return {mode:"ES", debtSheet: es, lineSheet: requiredSheet(wb, ["LÍNEAS DE CRÉDITO","LINEAS DE CREDITO"])};
+    const en = sheetByName(wb, ["BALANCES"]);
+    if(en) return {mode:"EN", debtSheet: en, lineSheet: requiredSheet(wb, ["LINES"])};
+    throw new Error("No identifiqué la fuente. Debe tener SALDOS/LÍNEAS DE CRÉDITO o BALANCES/LINES.");
+  }
+
+  function readDebtData(source){
+    const rows = rowsFromSheet(source.debtSheet.sheet);
+    if(!rows.length) return {records:[], componentSpecs:[]};
+    const headers = rows[0];
+    const hm = headerMap(headers);
+    const idxCliente = findIdx(hm,["CLIENTE","CUSTOMER"]);
+    const idxFondeador = findIdx(hm,["FONDEADOR","FUNDER"]);
+    const idxProveedor = findIdx(hm,["PROVEEDOR","MERCHANT"], false);
+    const idxFechaEmision = findIdx(hm,["FECHA DE EMISIÓN","FECHA DE EMISION","ISSUE DATE"]);
+    const idxFechaVenc = findIdx(hm,["FECHA DE VENCIMIENTO MÁXIMA","FECHA DE VENCIMIENTO MAXIMA","MAX DUE DATE"]);
+    const idxComponentStart = findIdx(hm,["SALDO INSOLUTO","SALDO INSOLUTO ","PRINCIPAL"]);
+    const idxTotal = source.mode === "EN" ? findIdx(hm,["TOTAL OUTSTANDING"]) : findIdx(hm,["TOTAL"]);
+    const componentSpecs = buildComponentSpecs(headers, idxComponentStart, idxTotal, source.mode);
+    const idxEstado = findIdx(hm,["ESTADO DE LA DISPOSICIÓN","ESTADO DE LA DISPOSICION","ESTADO DE LA DISPOSISION","LOAN STATUS"]);
+    const idxMoneda = findIdx(hm,["MONEDA","CURRENCY"], false);
+    const idxReferencia = findIdx(hm, REFERENCE_ALIASES, false);
+    const idxDias = findIdx(hm,["DÍAS TRANSCURRIDOS","DIAS TRANSCURRIDOS","DAYS"], false);
+    const out = [];
+    const debtDataIndexes = [idxFondeador, idxFechaEmision, idxFechaVenc, idxEstado, idxMoneda, idxReferencia, idxProveedor, ...componentSpecs.map(c=>c.index)].filter(i => i !== null && i !== undefined);
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if(!rowHasDebtData(row, idxCliente, idxTotal, debtDataIndexes)) continue;
+      const cliente = cell(row, idxCliente, "");
+      const total = numberOrZero(cell(row, idxTotal));
+      const fondeadorOriginal = cell(row, idxFondeador, "");
+      const fondeador = normalizeFondeador(fondeadorOriginal);
+      const moneda = String(cell(row, idxMoneda, source.mode === "EN" ? "USD" : "MXN") || (source.mode === "EN" ? "USD" : "MXN")).trim().toUpperCase();
+      const components = componentSpecs.map(spec => numberOrZero(cell(row, spec.index)));
+      out.push({
+        cliente:String(cliente).trim(),
+        proveedor:String(cell(row,idxProveedor,"")||"").trim(),
+        clienteKey:keyText(cliente),
+        fondeadorOriginal:String(fondeadorOriginal||"").trim(),
+        fondeadorGrupo:fondeador,
+        fondeadorKey:keyText(fondeador),
+        moneda,
+        fechaEmision:cell(row,idxFechaEmision),
+        fechaVencimiento:cell(row,idxFechaVenc),
+        components,
+        total,
+        estado:String(cell(row,idxEstado,"")||"").trim().toUpperCase(),
+        referencia:String(cell(row,idxReferencia,"")||"").trim(),
+        dias:cell(row,idxDias,"")
+      });
+    }
+    return {records: out, componentSpecs};
+  }
+
+  function readDisponibles(source, statusFilter){
+    const rows = rowsFromSheet(source.lineSheet.sheet);
+    if(!rows.length) return new Map();
+    const headers = rows[0]; const hm = headerMap(headers);
+    const idxEmpresa = findIdx(hm,["EMPRESA","CUSTOMER"]);
+    const idxFondeador = findIdx(hm,["FONDEADOR","FUNDER"]);
+    const idxMonto = findIdx(hm,["MONTO DISPONIBLE","AVAILABLE AMOUNT"]);
+    const idxMoneda = findIdx(hm,["MONEDA","CURRENCY"]);
+    const idxStatus = findIdx(hm,["STATUS"], false);
+    const valid = statusFilter.map(normalizeText).filter(Boolean); const useFilter = valid.length > 0;
+    const out = new Map();
+    const lineDataIndexes = [idxFondeador, idxMoneda, idxStatus].filter(i => i !== null && i !== undefined);
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if(!rowHasLineData(row, idxEmpresa, idxMonto, lineDataIndexes)) continue;
+      const empresa = cell(row,idxEmpresa,"");
+      if(useFilter && idxStatus !== null && !valid.includes(normalizeText(cell(row,idxStatus,"")))) continue;
+      const fondeador = normalizeFondeador(cell(row,idxFondeador,""));
+      const moneda = String(cell(row,idxMoneda, source.mode === "EN" ? "USD" : "MXN") || (source.mode === "EN" ? "USD" : "MXN")).trim().toUpperCase();
+      const key = `${keyText(empresa)}|${keyText(fondeador)}|${moneda}`;
+      out.set(key, (out.get(key) || 0) + numberOrZero(cell(row,idxMonto)));
+    }
+    return out;
+  }
+
+  function excelDateValue(value){
+    if(typeof value === "number") return value;
+    if(value instanceof Date) return value;
+    return value ?? "";
+  }
+  function styleCell(ws, addr, style){ if(ws[addr]) ws[addr].s = style; }
+  function activeComponentSpecsForItem(item, componentSpecs){
+    const visiblePairKeys = new Set();
+    componentSpecs.forEach((spec, componentPosition) => {
+      const hasBalance = item.records.some(rec => hasDebtAmount(rec.components[componentPosition]));
+      if(hasBalance) visiblePairKeys.add(spec.pairKey || normalizeText(spec.label));
+    });
+    const visible = [];
+    componentSpecs.forEach((spec, componentPosition) => {
+      const key = spec.pairKey || normalizeText(spec.label);
+      if(visiblePairKeys.has(key)) visible.push({...spec, componentPosition});
+    });
+    return visible;
+  }
+
+  function makeWorkbook(item, sourceMode, componentSpecs){
+    const visibleComponents = activeComponentSpecsForItem(item, componentSpecs);
+    item.visibleComponentCount = visibleComponents.length;
+    const baseColumns = sourceMode === "EN" ? ["CUSTOMER","MERCHANT","ISSUE DATE","MAX DUE DATE"] : ["CLIENTE","PROVEEDOR","FECHA DE EMISIÓN","FECHA DE VENCIMIENTO MÁXIMA"];
+    const tailColumns = sourceMode === "EN" ? ["TOTAL OUTSTANDING","LOAN STATUS","REFERENCE NUMBER","DAYS"] : ["TOTAL","ESTADO DE LA DISPOSICIÓN","NÚMERO DE REFERENCIA","DÍAS TRANSCURRIDOS"];
+    const reportColumns = [...baseColumns, ...visibleComponents.map(c=>c.label), ...tailColumns];
+    const rows = [];
+    rows.push(["SALDO DISPONIBLE", item.saldoDisponible, item.moneda]);
+    rows.push([sourceMode === "EN" ? "Reporte generado desde BALANCES / LINES. Regla: filas con datos + TOTAL OUTSTANDING > 0. Solo se muestran componentes de deuda con saldo real; IVA/TAX se conserva cuando su fee o interés relacionado tiene saldo." : "Reporte generado desde SALDOS / LÍNEAS DE CRÉDITO. Regla: filas con datos + TOTAL > 0. Solo se muestran componentes de deuda con saldo real; IVA/TAX se conserva cuando su fee o interés relacionado tiene saldo."]);
+    rows.push([]);
+    rows.push(reportColumns);
+    item.records.sort((a,b)=>String(a.estado).localeCompare(String(b.estado)) || Number(a.fechaVencimiento||0)-Number(b.fechaVencimiento||0));
+    item.records.forEach(rec => rows.push([rec.cliente, rec.proveedor || "", excelDateValue(rec.fechaEmision), excelDateValue(rec.fechaVencimiento), ...visibleComponents.map(c => rec.components[c.componentPosition]), rec.total, rec.estado, rec.referencia || "", rec.dias || ""]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const componentWidths = visibleComponents.map(c => (c.label.length > 24 ? {wch:24} : {wch:Math.max(14, c.label.length+2)}));
+    ws["!cols"] = [{wch:32},{wch:30},{wch:15},{wch:22}, ...componentWidths, {wch:16},{wch:23},{wch:24},{wch:17}];
+    ws["!freeze"] = {xSplit:0,ySplit:4};
+    ws["!autofilter"] = {ref:`A4:${XLSX.utils.encode_col(reportColumns.length-1)}${rows.length}`};
+    ws["!merges"] = [{s:{r:1,c:0}, e:{r:1,c:Math.min(reportColumns.length-1, 9)}}];
+    const navy = "163B55", teal = "1F6F78", soft = "EDF4F7", border = {style:"thin", color:{rgb:"C7D3DA"}};
+    const headerStyle = {font:{bold:true,color:{rgb:"FFFFFF"},sz:9}, fill:{fgColor:{rgb:teal}}, alignment:{horizontal:"center",vertical:"center",wrapText:true}, border:{top:border,bottom:border,left:border,right:border}};
+    const topLabel = {font:{bold:true,color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:navy}}, alignment:{horizontal:"center",vertical:"center"}, border:{top:border,bottom:border,left:border,right:border}};
+    const topMoney = {font:{bold:true,color:{rgb:navy}}, fill:{fgColor:{rgb:soft}}, numFmt:"$#,##0.00", alignment:{horizontal:"center",vertical:"center"}, border:{top:border,bottom:border,left:border,right:border}};
+    const body = {font:{color:{rgb:"334155"},sz:9}, alignment:{vertical:"center"}, border:{top:border,bottom:border,left:border,right:border}};
+    const moneyStyle = {...body, numFmt:"$#,##0.00", alignment:{horizontal:"right",vertical:"center"}};
+    const dateStyle = {...body, numFmt:"dd/mm/yyyy", alignment:{horizontal:"center",vertical:"center"}};
+    styleCell(ws,"A1",topLabel); styleCell(ws,"B1",topMoney); styleCell(ws,"C1",{...topMoney,numFmt:"@"}); styleCell(ws,"A2",{font:{italic:true,color:{rgb:"64748B"},sz:9}});
+    for(let c=0;c<reportColumns.length;c++){ styleCell(ws, XLSX.utils.encode_cell({r:3,c}), headerStyle); }
+    const firstMoneyCol = 4;
+    const totalCol = 4 + visibleComponents.length;
+    for(let r=4;r<rows.length;r++){
+      for(let c=0;c<reportColumns.length;c++){
+        const addr = XLSX.utils.encode_cell({r,c});
+        if(c===2||c===3) styleCell(ws,addr,dateStyle);
+        else if((c>=firstMoneyCol && c<=totalCol)) styleCell(ws,addr,moneyStyle);
+        else styleCell(ws,addr,body);
+      }
+    }
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Estatus");
+    return wb;
+  }
+
+  function downloadBlob(blob, filename){ const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 3000); }
+
+  $("uploadForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); clearMessage(); generated = [];
+    $("resultsSection").classList.add("hidden"); $("kpis").classList.add("hidden"); $("resultsBody").innerHTML = "";
+    if(!window.XLSX || !window.JSZip){ showMessage("error", "No se cargaron las librerías de Excel/ZIP. Abre este HTML con conexión a internet o usa la versión Flask incluida en el ZIP."); return; }
+    const file = $("fileInput").files[0]; if(!file){ showMessage("error", "Carga primero el archivo fuente."); return; }
+    const btn = $("processBtn"); btn.disabled = true; btn.textContent = "Procesando..."; setProgress(10);
+    try{
+      const buffer = await file.arrayBuffer(); setProgress(25);
+      const wb = XLSX.read(buffer, {type:"array", cellDates:false, raw:true});
+      const source = detectSource(wb);
+      const statusFilter = $("statusInput").value.split(",").map(s=>s.trim()).filter(Boolean);
+      const debtData = readDebtData(source); setProgress(40);
+      const debtRows = debtData.records;
+      const componentSpecs = debtData.componentSpecs;
+      const disponibles = readDisponibles(source, statusFilter); setProgress(50);
+      const groups = new Map();
+      for(const rec of debtRows){
+        const groupKey = `${rec.clienteKey}|${rec.fondeadorKey}|${rec.moneda}`;
+        if(!groups.has(groupKey)) groups.set(groupKey, {cliente:rec.cliente, fondeador:rec.fondeadorGrupo, moneda:rec.moneda, records:[]});
+        groups.get(groupKey).records.push(rec);
+      }
+      const items = Array.from(groups.values()).sort((a,b)=>a.cliente.localeCompare(b.cliente) || a.fondeador.localeCompare(b.fondeador) || a.moneda.localeCompare(b.moneda));
+      if(!items.length) throw new Error(source.mode === "EN" ? "No encontré operaciones con TOTAL OUTSTANDING > 0 en BALANCES." : "No encontré operaciones con TOTAL > 0 en SALDOS.");
+      const zip = new JSZip();
+      let totalOps = 0;
+      for(let i=0; i<items.length; i++){
+        const item = items[i]; const gKey = `${keyText(item.cliente)}|${keyText(item.fondeador)}|${item.moneda}`;
+        item.saldoDisponible = Math.round((disponibles.get(gKey) || 0) * 100) / 100;
+        item.total = Math.round(item.records.reduce((s,r)=>s+r.total,0)*100)/100;
+        item.filename = safeFilename(`RESUMEN DE OPERACIONES - ${item.cliente} - ${item.fondeador} - ${item.moneda}.xlsx`);
+        const outWb = makeWorkbook(item, source.mode, componentSpecs);
+        const arr = XLSX.write(outWb, {bookType:"xlsx", type:"array", cellStyles:true});
+        item.blob = new Blob([arr], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+        zip.file(item.filename, item.blob);
+        generated.push(item);
+        totalOps += item.records.length;
+        setProgress(50 + Math.round((i+1)/items.length*45));
+      }
+      window.currentZip = zip;
+      $("kpiReports").textContent = String(generated.length);
+      $("kpiOps").textContent = String(totalOps);
+      $("kpiDebt").textContent = totalsByCurrencyText(generated, "total");
+      $("kpiAvailable").textContent = totalsByCurrencyText(generated, "saldoDisponible");
+      generated.forEach((r,idx)=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="file"></td><td></td><td><span class="pill"></span></td><td></td><td class="num"></td><td class="num"></td><td class="num"></td><td></td>`;
+        tr.children[0].textContent = r.filename; tr.children[1].textContent = r.cliente; tr.querySelector(".pill").textContent = r.fondeador; tr.children[3].textContent = r.moneda; tr.children[4].textContent = r.records.length; tr.children[5].textContent = money(r.saldoDisponible, r.moneda); tr.children[6].textContent = money(r.total, r.moneda);
+        const b = document.createElement("button"); b.className="btn light"; b.type="button"; b.textContent="Descargar"; b.addEventListener("click",()=>downloadBlob(r.blob,r.filename)); tr.children[7].appendChild(b); $("resultsBody").appendChild(tr);
+      });
+      $("kpis").classList.remove("hidden"); $("resultsSection").classList.remove("hidden"); showMessage("ok", `Proceso completado: ${generated.length} reportes generados desde ${source.debtSheet.name}/${source.lineSheet.name}. Componentes detectados: ${componentSpecs.length}. En cada reporte se muestran columnas con saldo y sus pares IVA/TAX asociados cuando aplica.`); setProgress(100);
+    }catch(err){ showMessage("error", err.message || String(err)); }
+    finally{ btn.disabled = false; btn.textContent = "Generar reportes"; setTimeout(()=>$("progressBar").classList.add("hidden"), 1200); }
+  });
+
+  $("downloadZip").addEventListener("click", async () => {
+    if(!window.currentZip){ showMessage("error", "Primero genera los reportes."); return; }
+    const blob = await window.currentZip.generateAsync({type:"blob"});
+    downloadBlob(blob, "RESUMENES_DE_OPERACIONES.zip");
+  });
+})();
+</script>
+</body>
+</html>
